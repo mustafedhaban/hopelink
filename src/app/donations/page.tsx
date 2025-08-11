@@ -2,7 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +12,15 @@ import { PageHeader } from "@/components/page-header";
 import { Shell } from "@/components/shells/shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Prisma } from '@prisma/client';
+import { loadStripe } from '@stripe/stripe-js';
+import { CreditCard, Heart, History } from "lucide-react";
 
-type Project = Prisma.ProjectGetPayload<{}>;
+type Project = Prisma.ProjectGetPayload<object>
 
 export default function DonationPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [formData, setFormData] = useState({
     amount: "",
@@ -28,6 +31,7 @@ export default function DonationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [cancelledPayment, setCancelledPayment] = useState(false);
 
   useEffect(() => {
     async function fetchProjects() {
@@ -35,7 +39,7 @@ export default function DonationPage() {
         const res = await fetch("/api/projects");
         if (res.ok) {
           const data = await res.json();
-          setProjects(data.projects);
+          setProjects(data);
         }
       } catch (err) {
         setError("Failed to load projects.");
@@ -43,6 +47,13 @@ export default function DonationPage() {
     }
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    // Check if payment was cancelled
+    if (searchParams.get('canceled') === 'true') {
+      setCancelledPayment(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (session?.user) {
@@ -62,48 +73,73 @@ export default function DonationPage() {
     setFormData({ ...formData, projectId: value });
   };
 
+  const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY ?? '');
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+        setError("Please enter a valid donation amount.");
+        return;
+    }
+    if (!formData.projectId) {
+        setError("Please select a project to donate to.");
+        return;
+    }
     setIsLoading(true);
     setError("");
     setSuccess("");
-
+  
     try {
-      const res = await fetch("/api/donations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          amount: parseFloat(formData.amount),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Failed to process donation.");
-      } else {
-        setSuccess("Donation successful! Thank you for your contribution.");
-        setFormData({
-          amount: "",
-          projectId: "",
-          donorName: session?.user?.name || "",
-          donorEmail: session?.user?.email || "",
+        const stripe = await stripePromise;
+        const res = await fetch("/api/donations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ...formData,
+                amount: parseFloat(formData.amount),
+            }),
         });
-      }
+  
+        const data = await res.json();
+  
+        if (!res.ok) {
+            setError(data.error || "Failed to process donation.");
+        } else {
+            const { sessionId } = data;
+            if (!stripe) throw new Error('Stripe failed to load');
+            const result = await stripe.redirectToCheckout({ sessionId });
+  
+            if (result.error) {
+                setError(result.error.message || "Payment processing failed");
+            } else {
+                setSuccess("Redirecting to payment...");
+            }
+        }
     } catch (err) {
-      setError("An unexpected error occurred.");
+        setError("An unexpected error occurred.");
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
   return (
     <Shell>
-      <PageHeader
-        heading="Make a Donation"
-        text="Support a project that matters to you."
-      />
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader
+          heading="Make a Donation"
+          text="Support a project that matters to you."
+        />
+        {session && (
+          <Button
+            variant="outline"
+            onClick={() => router.push("/donations/history")}
+            className="flex items-center gap-2"
+          >
+            <History className="h-4 w-4" />
+            My Donations
+          </Button>
+        )}
+      </div>
       <div className="w-full max-w-2xl mx-auto">
         <Card>
           <CardHeader>
@@ -112,14 +148,22 @@ export default function DonationPage() {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
+              {cancelledPayment && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Payment was cancelled. No charges were made to your account.
+                  </AlertDescription>
+                </Alert>
+              )}
               {error && (
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
               {success && (
-                <Alert>
-                  <AlertDescription>{success}</AlertDescription>
+                <Alert className="border-green-200 bg-green-50">
+                  <Heart className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">{success}</AlertDescription>
                 </Alert>
               )}
               <div className="space-y-2">
@@ -133,11 +177,15 @@ export default function DonationPage() {
                     <SelectValue placeholder="Choose a project..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.title}
-                      </SelectItem>
-                    ))}
+                    {projects && projects.length > 0 ? (
+                      projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem disabled value="no-projects">No projects available</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -181,7 +229,17 @@ export default function DonationPage() {
             </CardContent>
             <CardFooter>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Processing..." : "Donate Now"}
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Donate Now
+                  </>
+                )}
               </Button>
             </CardFooter>
           </form>

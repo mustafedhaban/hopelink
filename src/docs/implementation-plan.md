@@ -31,9 +31,10 @@ The database schema is already set up with the following models:
 - [x] Implement user profile management
   - [x] Create user profile page UI
   - [x] Fetch and display user data
-  - [ ] Allow users to update profile info
-  - [ ] Add avatar upload functionality
-  - [ ] Add password change/reset option
+  - [x] Allow users to update profile info
+  - [x] Add avatar upload functionality
+  - [x] Add password change/reset option
+  - [x] Test access control for all roles
 - [x] Add role-based access control middleware
   - [x] Define middleware logic for role checks
   - [x] Restrict access to admin/manager pages
@@ -61,23 +62,37 @@ The database schema is already set up with the following models:
   - [x] Restrict status changes by role
 
 ### Phase 3: Donation System
-- [ ] Create donation form
-  - [ ] Design donation form UI
-  - [ ] Validate donation inputs
-  - [ ] Connect form to payment/processing API
-- [ ] Implement donation processing
-  - [ ] Integrate payment provider (e.g., Stripe)
-  - [ ] Handle payment success/failure
-  - [ ] Store donation records in DB
-- [ ] Add donation history for users
-  - [ ] Create user donation history page
-  - [ ] Fetch and display past donations
-- [ ] Implement donation transparency features
-  - [ ] Show donation breakdown per project
-  - [ ] Display recent donations (public, if allowed)
-- [ ] Add donation impact visualization
-  - [ ] Design impact charts/graphs
-  - [ ] Connect to analytics data
+- [x] Create donation form
+  - [x] Design donation form UI with project selection
+  - [x] Validate donation inputs (amount, donor details)
+  - [x] Connect form to Stripe payment processing API
+- [x] Implement donation processing
+  - [x] Integrate Stripe payment provider with checkout sessions
+  - [x] Handle payment success/failure with proper redirects
+  - [x] Store donation records in DB with foreign key validation
+  - [x] Create webhook handler for secure payment confirmation
+  - [x] Update project funding amounts automatically
+- [x] Create payment success page
+  - [x] Display payment confirmation details
+  - [x] Show donation transaction information
+  - [x] Provide navigation back to dashboard/projects
+- [x] Add donation database schema
+  - [x] Add Stripe session ID tracking
+  - [x] Add donation status enum (PENDING, COMPLETED, FAILED, REFUNDED)
+  - [x] Support both anonymous and authenticated user donations
+- [x] Add donation history for users
+  - [x] Create user donation history page with summary statistics
+  - [x] Fetch and display past donations with project details
+  - [x] Add navigation between donation form and history
+- [x] Implement donation transparency features
+  - [x] Show donation breakdown per project with statistics API
+  - [x] Display recent donations with RecentDonations component
+  - [x] Create donation statistics with funding progress
+  - [x] Support both project-specific and global donation views
+- [x] Add donation impact visualization
+  - [x] Design donation statistics cards with progress indicators
+  - [x] Create funding progress visualization with goal tracking
+  - [x] Connect to aggregated analytics data with unique donor counts
 
 ### Phase 4: Dashboard & Analytics
 - [ ] Create role-specific dashboards

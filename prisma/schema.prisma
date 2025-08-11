@@ -2,7 +2,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// This is used to configure the seed script
 generator seed {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -13,6 +12,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// This is used to configure the seed script
 model User {
   id            String     @id @default(cuid())
   name          String?
@@ -64,33 +64,35 @@ model VerificationToken {
 }
 
 model Project {
-  id          String          @id @default(cuid())
-  title       String
-  description String
-  goal        Float
-  raised      Float           @default(0)
-  startDate   DateTime
-  endDate     DateTime?
-  status      ProjectStatus   @default(ACTIVE)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  donations   Donation[]
-  updates     ProjectUpdate[]
-  managers    User[]          @relation("ProjectManager")
+  id             String          @id @default(cuid())
+  title          String
+  description    String
+  goal           Float
+  currentFunding Float           @default(0)
+  startDate      DateTime
+  endDate        DateTime?
+  status         ProjectStatus   @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  donations      Donation[]
+  updates        ProjectUpdate[]
+  managers       User[]          @relation("ProjectManager")
 }
 
 model Donation {
-  id         String   @id @default(cuid())
-  amount     Float
-  donorName  String
-  donorEmail String
-  message    String?
-  anonymous  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  userId     String?
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String        @id @default(cuid())
+  amount           Float
+  message          String?
+  anonymous        Boolean       @default(false)
+  status           DonationStatus @default(PENDING)
+  stripeSessionId  String?       @unique
+  createdAt        DateTime      @default(now())
+  userId           String?
+  projectId        String
+  donorEmail       String
+  donorName        String
+  project          Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ProjectUpdate {
@@ -115,4 +117,11 @@ enum ProjectStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+}
+
+enum DonationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }

@@ -10,6 +10,15 @@ const ProjectsPage = async () => {
   const projects = await prisma.project.findMany({
     orderBy: {
       createdAt: 'desc'
+    },
+    include: {
+      donations: {
+        include: {
+          user: true
+        }
+      },
+      updates: true,
+      managers: true
     }
   });
 

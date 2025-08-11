@@ -57,12 +57,22 @@ interface Project {
   title: string;
   description: string;
   goal: number;
-  raised: number;
+  currentFunding: number;
   status: string;
   startDate: Date;
   endDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  donations?: Array<{
+    id: string;
+    amount: number;
+    user?: {
+      id: string;
+      name?: string;
+    } | null;
+  }>;
+  updates?: Array<any>;
+  managers?: Array<any>;
 }
 
 interface ProjectsDataTableProps {
@@ -236,7 +246,7 @@ export function ProjectsDataTable({ data }: ProjectsDataTableProps) {
                 <TableHead className="text-right py-5">
                   <Button
                     variant="ghost"
-                    onClick={() => handleSort('raised')}
+                    onClick={() => handleSort('currentFunding')}
                     className="h-auto p-0 font-semibold text-slate-700 hover:text-blue-600 transition-colors"
                   >
                     Raised
@@ -258,7 +268,7 @@ export function ProjectsDataTable({ data }: ProjectsDataTableProps) {
             </TableHeader>
             <TableBody>
               {filteredAndSortedData.map((project) => {
-                const progressPercentage = project.goal > 0 ? (project.raised / project.goal) * 100 : 0;
+                const progressPercentage = project.goal > 0 ? (project.currentFunding / project.goal) * 100 : 0;
                 const isHovered = isHoveredRow === project.id;
                 
                 return (
@@ -303,7 +313,7 @@ export function ProjectsDataTable({ data }: ProjectsDataTableProps) {
                     <TableCell className="text-right font-medium py-5">
                       <div className="flex items-center justify-end gap-1.5 text-slate-700">
                         <TrendingUp className={`h-4 w-4 ${isHovered ? 'text-green-500' : 'text-green-400'} transition-colors duration-200`} />
-                        {project.raised.toLocaleString()}
+                        {project.currentFunding.toLocaleString()}
                       </div>
                     </TableCell>
                     <TableCell className="py-5">
@@ -313,7 +323,7 @@ export function ProjectsDataTable({ data }: ProjectsDataTableProps) {
                             {progressPercentage.toFixed(1)}%
                           </span>
                           <span className="text-slate-500 text-xs">
-                            ${project.raised.toLocaleString()} / ${project.goal.toLocaleString()}
+                            ${project.currentFunding.toLocaleString()} / ${project.goal.toLocaleString()}
                           </span>
                         </div>
                         <Progress 
